@@ -3,199 +3,109 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>台灣公司產品通路業績模擬面板</title>
+    <title>台灣公司業績模擬面板 - 修復版</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/recharts/umd/Recharts.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.12.0/Recharts.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
     <style>
-        body { background-color: #f8fafc; font-family: "Microsoft JhengHei", sans-serif; }
-        .card-shadow { box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24); }
-    </script>
+        body { background-color: #f1f5f9; font-family: "Microsoft JhengHei", sans-serif; }
+        .card-shadow { box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
+    </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
+        // 確保從 Recharts 全域變數中抓取組件
+        const { 
+            LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, 
+            ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar 
+        } = window.Recharts;
+
         const { useState } = React;
-        const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, AreaChart, Area } = Recharts;
 
-        // --- 模擬數據 ---
         const BU_LIST = ["工紙", "家紙", "紙與紙板", "紙器", "紙器特販"];
-        const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
+        const COLORS = ['#0f172a', '#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
 
-        // --- 元件：篩選器 ---
-        const FilterSidebar = ({ items }) => (
-            <div className="w-48 flex-shrink-0 bg-white p-4 border-r h-full flex flex-col gap-4 text-sm card-shadow">
-                {items.map((filter, idx) => (
-                    <div key={idx}>
-                        <label className="block font-bold text-slate-600 mb-1">{filter.label}</label>
-                        <select className="w-full border p-1 rounded bg-slate-50 focus:outline-none focus:ring-1 focus:ring-blue-500">
-                            {filter.options.map((opt, i) => <option key={i}>{opt}</option>)}
-                        </select>
-                    </div>
-                ))}
+        // --- 子組件：KPI 卡片 ---
+        const MetricCard = ({ title, value, unit, isUp, percent, target }) => (
+            <div className="bg-white p-4 rounded-xl border card-shadow">
+                <h3 className="text-xs font-bold text-slate-500 mb-2">{title}</h3>
+                <div className="text-2xl font-black text-slate-800 mb-2">{value.toLocaleString()} <span className="text-sm font-normal">{unit}</span></div>
+                <div className="flex justify-between items-center text-xs">
+                    <span className={isUp ? 'text-green-600' : 'text-red-600'}>
+                        {isUp ? '▲' : '▼'} {percent}% (MoM)
+                    </span>
+                    <span className="text-slate-400">目標達成 {target}%</span>
+                </div>
+                <div className="w-full bg-slate-100 h-1.5 rounded-full mt-2">
+                    <div className="bg-blue-600 h-full rounded-full" style={{width: `${target}%`}}></div>
+                </div>
             </div>
         );
 
-        // --- 元件：核心指標卡片 (上下結構) ---
-        const MetricCard = ({ title, value, unit, mom, momPercent, targetPercent }) => {
-            const isPositive = momPercent >= 0;
-            return (
-                <div className="bg-white p-3 border rounded-lg flex flex-col gap-2 card-shadow">
-                    <div className="text-xs font-bold text-slate-500 border-b pb-1">{title}</div>
-                    <div className="text-xl font-black text-blue-900 text-center py-2">
-                        {value.toLocaleString()} <span className="text-xs font-normal">{unit}</span>
-                    </div>
-                    <div className="flex justify-between items-center pt-2 border-t">
-                        <div className={`text-xs ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                            {isPositive ? '▲' : '▼'} {Math.abs(mom).toLocaleString()} ({Math.abs(momPercent)}%)
-                        </div>
-                        <div className="flex-1 ml-4">
-                            <div className="text-[10px] text-right mb-0.5 text-slate-400">達成率 {targetPercent}%</div>
-                            <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                                <div className="bg-blue-500 h-full" style={{width: `${targetPercent}%`}}></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            );
-        };
-
         const App = () => {
-            const [currentPage, setCurrentPage] = useState('amount');
-            const updateDate = "2026/03/18";
-
-            const filters_common = [
-                { label: "年份", options: ["2026", "2025", "2024", "2023", "2022", "2021", "2020", "2019"] },
-                { label: "月份", options: Array.from({length:12}, (_, i) => `${i+1}月`) },
-                { label: "季度", options: ["Q1", "Q2", "Q3", "Q4"] },
-                { label: "事業部", options: BU_LIST },
-                { label: "銷售角度", options: ["市售", "直接外銷", "間接外銷"] },
-                { label: "產品", options: ["芯紙", "面紙", "紙管紙"] }
-            ];
+            const [page, setPage] = useState('amount');
 
             return (
-                <div className="flex flex-col h-screen max-h-screen">
-                    {/* Top Header */}
-                    <header className="bg-blue-900 text-white p-4 flex justify-between items-center">
-                        <h1 className="text-xl font-bold italic tracking-wider">台灣公司產品通路業績表</h1>
-                        <nav className="flex gap-2">
-                            {['amount', 'quantity', 'structure'].map(tab => (
-                                <button 
-                                    key={tab}
-                                    onClick={() => setCurrentPage(tab)}
-                                    className={`px-4 py-1.5 rounded-full text-sm font-bold transition ${currentPage === tab ? 'bg-white text-blue-900 shadow-lg' : 'bg-blue-800 hover:bg-blue-700'}`}
-                                >
-                                    {tab === 'amount' ? '當日業績金額' : tab === 'quantity' ? '當日業績數量' : '產品與通路結構'}
-                                </button>
-                            ))}
+                <div className="min-h-screen flex flex-col">
+                    <header className="bg-slate-900 text-white p-4 flex justify-between items-center sticky top-0 z-50">
+                        <h1 className="text-lg font-bold">台灣公司產品通路業績表</h1>
+                        <nav className="flex bg-slate-800 p-1 rounded-lg">
+                            <button onClick={()=>setPage('amount')} className={`px-4 py-1.5 rounded-md text-sm ${page==='amount' ? 'bg-blue-600' : 'hover:bg-slate-700'}`}>業績金額</button>
+                            <button onClick={()=>setPage('quantity')} className={`px-4 py-1.5 rounded-md text-sm ${page==='quantity' ? 'bg-blue-600' : 'hover:bg-slate-700'}`}>業績數量</button>
+                            <button onClick={()=>setPage('structure')} className={`px-4 py-1.5 rounded-md text-sm ${page==='structure' ? 'bg-blue-600' : 'hover:bg-slate-700'}`}>結構分析</button>
                         </nav>
                     </header>
 
-                    <div className="flex flex-1 overflow-hidden">
-                        {/* Sidebar */}
-                        <FilterSidebar items={currentPage === 'structure' ? filters_common.filter(f => f.label !== "銷售角度") : filters_common} />
+                    <div className="flex flex-1">
+                        {/* 模擬側邊欄 */}
+                        <aside className="w-48 bg-white border-r p-4 hidden md:block">
+                            <div className="space-y-4">
+                                <div><label className="text-xs font-bold text-slate-400">年份</label><select className="w-full border mt-1 p-1 text-sm"><option>2026</option></select></div>
+                                <div><label className="text-xs font-bold text-slate-400">事業部</label><select className="w-full border mt-1 p-1 text-sm"><option>工紙</option></select></div>
+                            </div>
+                        </aside>
 
-                        {/* Main Content Area */}
-                        <main className="flex-1 p-4 overflow-y-auto bg-slate-50">
-                            
-                            {(currentPage === 'amount' || currentPage === 'quantity') && (
-                                <div className="grid grid-cols-12 gap-4">
-                                    {/* Left Side: Total Performance */}
-                                    <div className="col-span-4">
-                                        <div className="mb-2 text-sm font-bold text-slate-700">全公司當日({updateDate})累計{currentPage === 'amount' ? '金額' : '數量'}實績</div>
-                                        <MetricCard 
-                                            title="全公司總計" 
-                                            value={currentPage === 'amount' ? 5234900 : 12500} 
-                                            unit={currentPage === 'amount' ? "NTD" : "噸"}
-                                            mom={currentPage === 'amount' ? 450000 : 800}
-                                            momPercent={8.5}
-                                            targetPercent={92}
-                                        />
+                        <main className="flex-1 p-6">
+                            {(page === 'amount' || page === 'quantity') && (
+                                <div className="space-y-6">
+                                    <h2 className="text-slate-600 font-bold">全公司當日累計實績總覽</h2>
+                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                        <MetricCard title="全公司總計" value={page==='amount'?8560240:2450} unit={page==='amount'?'NTD':'噸'} isUp={true} percent={5.4} target={92} />
+                                        {BU_LIST.slice(0,3).map(bu => <MetricCard key={bu} title={bu} value={2105000} unit={page==='amount'?'NTD':'噸'} isUp={false} percent={2.1} target={85} />)}
                                     </div>
-
-                                    {/* Right Side: BU Performance Grid */}
-                                    <div className="col-span-8 flex flex-col gap-4">
-                                        <div className="text-sm font-bold text-slate-700">當日事業部單位累計{currentPage === 'amount' ? '金額' : '數量'}實績</div>
-                                        <div className="grid grid-cols-3 gap-3">
-                                            {BU_LIST.slice(0, 3).map((bu, idx) => (
-                                                <MetricCard key={idx} title={bu} value={850000} unit={currentPage === 'amount' ? "NTD" : "噸"} mom={-12000} momPercent={-2.4} targetPercent={85} />
-                                            ))}
-                                        </div>
-                                        <div className="grid grid-cols-3 gap-3">
-                                            {BU_LIST.slice(3, 5).map((bu, idx) => (
-                                                <MetricCard key={idx} title={bu} value={720000} unit={currentPage === 'amount' ? "NTD" : "噸"} mom={56000} momPercent={6.1} targetPercent={78} />
-                                            ))}
-                                            <div className="border-2 border-dashed border-slate-200 rounded-lg flex items-center justify-center text-slate-300 italic text-xs">備用欄位</div>
-                                        </div>
+                                    <div className="bg-white p-6 rounded-xl border h-80 flex items-center justify-center text-slate-400 italic">
+                                        [此區域可放置各事業部明細圖表]
                                     </div>
                                 </div>
                             )}
 
-                            {currentPage === 'structure' && (
-                                <div className="grid grid-cols-2 grid-rows-2 gap-6 h-[calc(100vh-120px)]">
-                                    {/* Left Top: Product Structure */}
-                                    <div className="bg-white p-4 border rounded shadow-sm flex flex-col">
-                                        <div className="font-bold text-slate-700 border-b pb-2 mb-4">工紙產品結構比例 (銷貨淨額)</div>
-                                        <div className="flex-1 flex items-center justify-center">
-                                            <ResponsiveContainer width="100%" height={250}>
-                                                <PieChart>
-                                                    <Pie data={[{name:'芯紙', value:400}, {name:'面紙', value:300}, {name:'紙管紙', value:300}]} innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value" label>
-                                                        {COLORS.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                                                    </Pie>
-                                                    <Tooltip />
-                                                    <Legend verticalAlign="bottom" height={36}/>
-                                                </PieChart>
-                                            </ResponsiveContainer>
-                                        </div>
-                                    </div>
-
-                                    {/* Right Top: 5-Year Product Trend */}
-                                    <div className="bg-white p-4 border rounded shadow-sm">
-                                        <div className="font-bold text-slate-700 border-b pb-2 mb-4">產品近五年結構趨勢變動</div>
-                                        <ResponsiveContainer width="100%" height={250}>
-                                            <BarChart data={[{year:'2022', a:400, b:240, c:240}, {year:'2023', a:300, b:139, c:221}, {year:'2024', a:200, b:980, c:229}, {year:'2025', a:278, b:390, c:200}, {year:'2026', a:189, b:480, c:218}]}>
-                                                <CartesianGrid strokeDasharray="3 3" />
-                                                <XAxis dataKey="year" />
-                                                <YAxis />
+                            {page === 'structure' && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="bg-white p-4 rounded-xl border h-80">
+                                        <h3 className="font-bold mb-4">產品結構比例</h3>
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <PieChart>
+                                                <Pie data={[{n:'芯紙',v:40},{n:'面紙',v:35},{n:'紙管',v:25}]} dataKey="v" nameKey="n" innerRadius={60} outerRadius={80}>
+                                                    {COLORS.map((c,i)=><Cell key={i} fill={c}/>)}
+                                                </Pie>
                                                 <Tooltip />
-                                                <Legend />
-                                                <Bar dataKey="a" name="芯紙" stackId="a" fill="#8884d8" />
-                                                <Bar dataKey="b" name="面紙" stackId="a" fill="#82ca9d" />
-                                                <Bar dataKey="c" name="紙管紙" stackId="a" fill="#ffc658" />
-                                            </BarChart>
+                                            </PieChart>
                                         </ResponsiveContainer>
                                     </div>
-
-                                    {/* Left Bottom: Channel Structure */}
-                                    <div className="bg-white p-4 border rounded shadow-sm">
-                                        <div className="font-bold text-slate-700 border-b pb-2 mb-4">各通路結構比例 (銷貨淨額)</div>
-                                        <ResponsiveContainer width="100%" height={250}>
-                                            <BarChart layout="vertical" data={[{name:'市售', value:4500}, {name:'直接外銷', value:3200}, {name:'間接外銷', value:2100}]}>
-                                                <XAxis type="number" />
-                                                <YAxis dataKey="name" type="category" width={80}/>
-                                                <Tooltip />
-                                                <Bar dataKey="value" fill="#0088FE" radius={[0, 4, 4, 0]} />
-                                            </BarChart>
-                                        </ResponsiveContainer>
-                                    </div>
-
-                                    {/* Right Bottom: Channel Trend */}
-                                    <div className="bg-white p-4 border rounded shadow-sm">
-                                        <div className="font-bold text-slate-700 border-b pb-2 mb-4">各通路近五年趨勢變化</div>
-                                        <ResponsiveContainer width="100%" height={250}>
-                                            <LineChart data={[{y:'22', s1:40, s2:24, s3:24}, {y:'23', s1:30, s2:13, s3:22}, {y:'24', s1:20, s2:98, s3:22}, {y:'25', s1:27, s2:39, s3:20}, {y:'26', s1:18, s2:48, s3:21}]}>
+                                    <div className="bg-white p-4 rounded-xl border h-80">
+                                        <h3 className="font-bold mb-4">近五年趨勢變化</h3>
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={[{y:'22',v:100},{y:'23',v:120},{y:'24',v:110},{y:'25',v:140},{y:'26',v:165}]}>
                                                 <CartesianGrid strokeDasharray="3 3" />
                                                 <XAxis dataKey="y" />
                                                 <YAxis />
                                                 <Tooltip />
-                                                <Legend />
-                                                <Line type="monotone" dataKey="s1" name="市售" stroke="#8884d8" strokeWidth={3} />
-                                                <Line type="monotone" dataKey="s2" name="直接外銷" stroke="#82ca9d" strokeWidth={3} />
-                                                <Line type="monotone" dataKey="s3" name="間接外銷" stroke="#ffc658" strokeWidth={3} />
-                                            </LineChart>
+                                                <Bar dataKey="v" fill="#3b82f6" radius={[4,4,0,0]} />
+                                            </BarChart>
                                         </ResponsiveContainer>
                                     </div>
                                 </div>
