@@ -3,121 +3,128 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>台灣公司業績模擬面板 - 修復版</title>
+    <title>台灣公司業績模擬面板 - 終極修復版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.12.0/Recharts.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.10.3/Recharts.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
     <style>
-        body { background-color: #f1f5f9; font-family: "Microsoft JhengHei", sans-serif; }
-        .card-shadow { box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
+        body { background-color: #f8fafc; font-family: "Microsoft JhengHei", sans-serif; margin: 0; }
+        .active-tab { background-color: #2563eb !important; color: white !important; }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
-        // 確保從 Recharts 全域變數中抓取組件
-        const { 
-            LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, 
-            ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar 
-        } = window.Recharts;
+        // 等待全局變量加載完成
+        window.onload = () => {
+            const { useState } = React;
+            const { 
+                LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, 
+                ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar 
+            } = window.Recharts;
 
-        const { useState } = React;
+            const BU_LIST = ["工紙", "家紙", "紙與紙板", "紙器", "紙器特販"];
+            const COLORS = ['#1e293b', '#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
 
-        const BU_LIST = ["工紙", "家紙", "紙與紙板", "紙器", "紙器特販"];
-        const COLORS = ['#0f172a', '#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
-
-        // --- 子組件：KPI 卡片 ---
-        const MetricCard = ({ title, value, unit, isUp, percent, target }) => (
-            <div className="bg-white p-4 rounded-xl border card-shadow">
-                <h3 className="text-xs font-bold text-slate-500 mb-2">{title}</h3>
-                <div className="text-2xl font-black text-slate-800 mb-2">{value.toLocaleString()} <span className="text-sm font-normal">{unit}</span></div>
-                <div className="flex justify-between items-center text-xs">
-                    <span className={isUp ? 'text-green-600' : 'text-red-600'}>
-                        {isUp ? '▲' : '▼'} {percent}% (MoM)
-                    </span>
-                    <span className="text-slate-400">目標達成 {target}%</span>
-                </div>
-                <div className="w-full bg-slate-100 h-1.5 rounded-full mt-2">
-                    <div className="bg-blue-600 h-full rounded-full" style={{width: `${target}%`}}></div>
-                </div>
-            </div>
-        );
-
-        const App = () => {
-            const [page, setPage] = useState('amount');
-
-            return (
-                <div className="min-h-screen flex flex-col">
-                    <header className="bg-slate-900 text-white p-4 flex justify-between items-center sticky top-0 z-50">
-                        <h1 className="text-lg font-bold">台灣公司產品通路業績表</h1>
-                        <nav className="flex bg-slate-800 p-1 rounded-lg">
-                            <button onClick={()=>setPage('amount')} className={`px-4 py-1.5 rounded-md text-sm ${page==='amount' ? 'bg-blue-600' : 'hover:bg-slate-700'}`}>業績金額</button>
-                            <button onClick={()=>setPage('quantity')} className={`px-4 py-1.5 rounded-md text-sm ${page==='quantity' ? 'bg-blue-600' : 'hover:bg-slate-700'}`}>業績數量</button>
-                            <button onClick={()=>setPage('structure')} className={`px-4 py-1.5 rounded-md text-sm ${page==='structure' ? 'bg-blue-600' : 'hover:bg-slate-700'}`}>結構分析</button>
-                        </nav>
-                    </header>
-
-                    <div className="flex flex-1">
-                        {/* 模擬側邊欄 */}
-                        <aside className="w-48 bg-white border-r p-4 hidden md:block">
-                            <div className="space-y-4">
-                                <div><label className="text-xs font-bold text-slate-400">年份</label><select className="w-full border mt-1 p-1 text-sm"><option>2026</option></select></div>
-                                <div><label className="text-xs font-bold text-slate-400">事業部</label><select className="w-full border mt-1 p-1 text-sm"><option>工紙</option></select></div>
-                            </div>
-                        </aside>
-
-                        <main className="flex-1 p-6">
-                            {(page === 'amount' || page === 'quantity') && (
-                                <div className="space-y-6">
-                                    <h2 className="text-slate-600 font-bold">全公司當日累計實績總覽</h2>
-                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                        <MetricCard title="全公司總計" value={page==='amount'?8560240:2450} unit={page==='amount'?'NTD':'噸'} isUp={true} percent={5.4} target={92} />
-                                        {BU_LIST.slice(0,3).map(bu => <MetricCard key={bu} title={bu} value={2105000} unit={page==='amount'?'NTD':'噸'} isUp={false} percent={2.1} target={85} />)}
-                                    </div>
-                                    <div className="bg-white p-6 rounded-xl border h-80 flex items-center justify-center text-slate-400 italic">
-                                        [此區域可放置各事業部明細圖表]
-                                    </div>
-                                </div>
-                            )}
-
-                            {page === 'structure' && (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="bg-white p-4 rounded-xl border h-80">
-                                        <h3 className="font-bold mb-4">產品結構比例</h3>
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <PieChart>
-                                                <Pie data={[{n:'芯紙',v:40},{n:'面紙',v:35},{n:'紙管',v:25}]} dataKey="v" nameKey="n" innerRadius={60} outerRadius={80}>
-                                                    {COLORS.map((c,i)=><Cell key={i} fill={c}/>)}
-                                                </Pie>
-                                                <Tooltip />
-                                            </PieChart>
-                                        </ResponsiveContainer>
-                                    </div>
-                                    <div className="bg-white p-4 rounded-xl border h-80">
-                                        <h3 className="font-bold mb-4">近五年趨勢變化</h3>
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <BarChart data={[{y:'22',v:100},{y:'23',v:120},{y:'24',v:110},{y:'25',v:140},{y:'26',v:165}]}>
-                                                <CartesianGrid strokeDasharray="3 3" />
-                                                <XAxis dataKey="y" />
-                                                <YAxis />
-                                                <Tooltip />
-                                                <Bar dataKey="v" fill="#3b82f6" radius={[4,4,0,0]} />
-                                            </BarChart>
-                                        </ResponsiveContainer>
-                                    </div>
-                                </div>
-                            )}
-                        </main>
+            const MetricCard = ({ title, value, unit, isUp, percent, target }) => (
+                <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                    <div className="text-xs font-bold text-slate-400 mb-1">{title}</div>
+                    <div className="text-xl font-black text-slate-800">{value.toLocaleString()} <span className="text-xs font-normal">{unit}</span></div>
+                    <div className="flex justify-between items-center mt-3 text-[10px]">
+                        <span className={isUp ? 'text-green-600' : 'text-red-600'}>
+                            {isUp ? '▲' : '▼'} {percent}% (MoM)
+                        </span>
+                        <span className="text-slate-400 font-medium">達成 {target}%</span>
+                    </div>
+                    <div className="w-full bg-slate-100 h-1 rounded-full mt-2">
+                        <div className="bg-blue-500 h-full rounded-full" style={{width: `${target}%`}}></div>
                     </div>
                 </div>
             );
-        };
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+            const MainApp = () => {
+                const [view, setView] = useState('amount');
+
+                return (
+                    <div className="flex flex-col min-h-screen">
+                        {/* Header */}
+                        <header className="bg-slate-900 text-white p-4 flex justify-between items-center shadow-md">
+                            <span className="font-bold tracking-tight">台灣公司產品通路業績表</span>
+                            <div className="flex bg-slate-800 p-1 rounded-lg space-x-1">
+                                <button onClick={()=>setView('amount')} className={`px-4 py-1 rounded text-xs transition ${view==='amount' ? 'active-tab' : 'hover:bg-slate-700'}`}>業績金額</button>
+                                <button onClick={()=>setView('quantity')} className={`px-4 py-1 rounded text-xs transition ${view==='quantity' ? 'active-tab' : 'hover:bg-slate-700'}`}>業績數量</button>
+                                <button onClick={()=>setView('structure')} className={`px-4 py-1 rounded text-xs transition ${view==='structure' ? 'active-tab' : 'hover:bg-slate-700'}`}>結構分析</button>
+                            </div>
+                        </header>
+
+                        <div className="flex flex-1 overflow-hidden">
+                            {/* Sidebar Filters */}
+                            <aside className="w-44 bg-white border-r p-4 space-y-4">
+                                <div>
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase">年份</label>
+                                    <select className="w-full border p-1 text-xs rounded mt-1 bg-slate-50"><option>2026</option></select>
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase">事業部</label>
+                                    <select className="w-full border p-1 text-xs rounded mt-1 bg-slate-50"><option>全公司</option><option>工紙</option></select>
+                                </div>
+                            </aside>
+
+                            {/* Content */}
+                            <main className="flex-1 p-6 overflow-auto">
+                                {(view === 'amount' || view === 'quantity') && (
+                                    <div className="space-y-6">
+                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                            <MetricCard title="全公司當日累計" value={view==='amount'?9240500:3200} unit={view==='amount'?'NTD':'噸'} isUp={true} percent={4.2} target={88} />
+                                            {BU_LIST.slice(0,3).map(name => (
+                                                <MetricCard key={name} title={name} value={1850000} unit={view==='amount'?'NTD':'噸'} isUp={false} percent={1.5} target={76} />
+                                            ))}
+                                        </div>
+                                        <div className="h-64 bg-white rounded-xl border border-dashed border-slate-300 flex items-center justify-center text-slate-300 text-sm">
+                                            此區塊載入中... (模擬數據預覽)
+                                        </div>
+                                    </div>
+                                )}
+
+                                {view === 'structure' && (
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                        <div className="bg-white p-4 rounded-xl border shadow-sm h-72">
+                                            <h4 className="text-sm font-bold text-slate-600 mb-4 border-b pb-2">產品結構比例</h4>
+                                            <ResponsiveContainer width="100%" height="85%">
+                                                <PieChart>
+                                                    <Pie data={[{n:'芯紙',v:50},{n:'面紙',v:30},{n:'其他',v:20}]} dataKey="v" nameKey="n" innerRadius={50} outerRadius={70}>
+                                                        {COLORS.map((c,i)=><Cell key={i} fill={c}/>)}
+                                                    </Pie>
+                                                    <Tooltip />
+                                                </PieChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                        <div className="bg-white p-4 rounded-xl border shadow-sm h-72">
+                                            <h4 className="text-sm font-bold text-slate-600 mb-4 border-b pb-2">近五年趨勢變化</h4>
+                                            <ResponsiveContainer width="100%" height="85%">
+                                                <BarChart data={[{x:'22',v:80},{x:'23',v:95},{x:'24',v:110},{x:'25',v:105},{x:'26',v:130}]}>
+                                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                                    <XAxis dataKey="x" tick={{fontSize: 10}} />
+                                                    <YAxis tick={{fontSize: 10}} />
+                                                    <Tooltip />
+                                                    <Bar dataKey="v" fill="#3b82f6" radius={[2,2,0,0]} />
+                                                </BarChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                    </div>
+                                )}
+                            </main>
+                        </div>
+                    </div>
+                );
+            };
+
+            const root = ReactDOM.createRoot(document.getElementById('root'));
+            root.render(<MainApp />);
+        };
     </script>
 </body>
 </html>
